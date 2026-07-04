@@ -72,6 +72,9 @@ export default function Home() {
   const [result, setResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [audioBusy, setAudioBusy] = useState(false);
+  const [audioError, setAudioError] = useState(null);
   const fileInput = useRef(null);
   const outputRef = useRef(null);
 
@@ -80,6 +83,11 @@ export default function Home() {
 
   useEffect(() => {
     setCopied(false);
+    setAudioError(null);
+    setAudioUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return null;
+    });
   }, [result]);
 
   const onFile = useCallback(async (file) => {
@@ -146,6 +154,32 @@ export default function Home() {
     if (!result) return;
     await navigator.clipboard.writeText(result.script);
     setCopied(true);
+  };
+
+  const generateAudio = async () => {
+    if (!result || audioBusy) return;
+    setAudioBusy(true);
+    setAudioError(null);
+    try {
+      const res = await fetch("/api/audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: result.script, archetypeId, mode }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Audio generation broke. Try again.");
+      }
+      const blob = await res.blob();
+      setAudioUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return URL.createObjectURL(blob);
+      });
+    } catch (e) {
+      setAudioError(e.message);
+    } finally {
+      setAudioBusy(false);
+    }
   };
 
   return (
@@ -266,8 +300,20 @@ export default function Home() {
               <button className="ghost-btn" onClick={generate}>
                 Run it back
               </button>
+              <button className="ghost-btn" onClick={generateAudio} disabled={audioBusy}>
+                {audioBusy ? "In the booth..." : "🎧 Episode Audio"}
+              </button>
             </div>
           </div>
+          {audioError && <div className="error">{audioError}</div>}
+          {audioUrl && (
+            <div className="audio-bar">
+              <audio controls src={audioUrl} style={{ width: "100%" }} />
+              <a className="ghost-btn" href={audioUrl} download="culturelm-episode.wav">
+                Download
+              </a>
+            </div>
+          )}
           <ScriptView script={result.script} casts={casts} />
         </section>
       )}
