@@ -2,25 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ARCHETYPES, PUBLIC_CASTS, REAL_CASTS } from "../lib/personas";
+import { extractText, ACCEPT, TYPE_LABEL } from "../lib/extract";
 
 const REAL_MODE_KEY = "culturelm.realModeAccepted";
-
-async function extractPdfText(file) {
-  const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url
-  ).toString();
-  const buf = await file.arrayBuffer();
-  const doc = await pdfjs.getDocument({ data: buf }).promise;
-  let out = "";
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    out += content.items.map((it) => it.str).join(" ") + "\n\n";
-  }
-  return out.trim();
-}
 
 function ScriptView({ script, casts }) {
   const colorFor = useMemo(() => {
@@ -94,20 +78,16 @@ export default function Home() {
     if (!file) return;
     setError(null);
     try {
-      if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
-        setFileName(`${file.name} — reading...`);
-        const text = await extractPdfText(file);
-        if (!text) throw new Error("empty");
-        setSourceText(text);
-        setFileName(file.name);
-      } else {
-        const text = await file.text();
-        setSourceText(text);
-        setFileName(file.name);
-      }
+      setFileName(`${file.name} — reading...`);
+      const text = await extractText(file);
+      if (!text) throw new Error("empty");
+      setSourceText(text);
+      setFileName(file.name);
     } catch {
       setFileName(null);
-      setError("Couldn't read that file. Try another PDF or paste the text.");
+      setError(
+        `Couldn't read that file. Supported: ${TYPE_LABEL} — or paste the text.`
+      );
     }
   }, []);
 
@@ -220,13 +200,14 @@ export default function Home() {
           </>
         ) : (
           <>
-            Drop a <strong>PDF</strong> here or tap to browse
+            Drop a <strong>PDF, Word doc, HTML, CSV, JSON, or text file</strong>{" "}
+            here or tap to browse
           </>
         )}
         <input
           ref={fileInput}
           type="file"
-          accept=".pdf,.txt,.md"
+          accept={ACCEPT}
           hidden
           onChange={(e) => onFile(e.target.files?.[0])}
         />
