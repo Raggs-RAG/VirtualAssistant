@@ -59,6 +59,7 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState(null);
   const [audioBusy, setAudioBusy] = useState(false);
   const [audioError, setAudioError] = useState(null);
+  const [showTranscript, setShowTranscript] = useState(true);
   const fileInput = useRef(null);
   const outputRef = useRef(null);
 
@@ -68,6 +69,7 @@ export default function Home() {
   useEffect(() => {
     setCopied(false);
     setAudioError(null);
+    setShowTranscript(true);
     setAudioUrl((old) => {
       if (old) URL.revokeObjectURL(old);
       return null;
@@ -155,6 +157,7 @@ export default function Home() {
         if (old) URL.revokeObjectURL(old);
         return URL.createObjectURL(blob);
       });
+      setShowTranscript(false);
     } catch (e) {
       setAudioError(e.message);
     } finally {
@@ -171,7 +174,7 @@ export default function Home() {
 
       <section className="hero">
         <h1 className="display">
-          Run the news through the culture.
+          Run the news through <span className="accent">the culture.</span>
         </h1>
         <p>
           Upload any document. Pick your show. Get the breakdown the way your
@@ -295,7 +298,13 @@ export default function Home() {
               </a>
             </div>
           )}
-          <ScriptView script={result.script} casts={casts} />
+          <button
+            className="transcript-toggle"
+            onClick={() => setShowTranscript((v) => !v)}
+          >
+            {showTranscript ? "Hide transcript ▴" : "Read the transcript ▾"}
+          </button>
+          {showTranscript && <ScriptView script={result.script} casts={casts} />}
         </section>
       )}
 
