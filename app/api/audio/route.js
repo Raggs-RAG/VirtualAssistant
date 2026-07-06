@@ -31,28 +31,53 @@ export async function POST(req) {
 
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: TTS_MODEL,
-      contents: `TTS the following podcast conversation. Deliver it with real energy — animated, conversational, hosts talking like they're in the room together, not reading:\n\n${transcript}`,
-      config: {
-        responseModalities: ["AUDIO"],
-        speechConfig: {
-          multiSpeakerVoiceConfig: {
-            speakerVoiceConfigs: speakers.map((s) => ({
-              speaker: s.name,
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } },
-            })),
+
+    const synthesize = async () => {
+      const response = await ai.models.generateContent({
+        model: TTS_MODEL,
+        contents: `TTS the following podcast conversation. Deliver it with real energy — animated, conversational, hosts talking like they're in the room together, not reading:\n\n${transcript}`,
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            multiSpeakerVoiceConfig: {
+              speakerVoiceConfigs: speakers.map((s) => ({
+                speaker: s.name,
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } },
+              })),
+            },
           },
         },
-      },
-    });
+      });
+      const cand = response.candidates?.[0];
+      const b64 = cand?.content?.parts?.find((p) => p.inlineData)?.inlineData
+        ?.data;
+      if (!b64) {
+        console.error(
+          "tts empty:",
+          JSON.stringify({
+            finishReason: cand?.finishReason,
+            promptFeedback: response.promptFeedback,
+            parts: (cand?.content?.parts || []).map((p) =>
+              p.inlineData ? "audio" : String(p.text || "").slice(0, 120)
+            ),
+          })
+        );
+      }
+      return { b64, finishReason: cand?.finishReason };
+    };
 
-    const b64 =
-      response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)
-        ?.inlineData?.data;
+    let { b64, finishReason } = await synthesize();
+    if (!b64 && !/SAFETY|PROHIBITED/i.test(String(finishReason))) {
+      ({ b64, finishReason } = await synthesize());
+    }
     if (!b64) {
+      const flagged = /SAFETY|PROHIBITED/i.test(String(finishReason));
       return Response.json(
-        { error: "The booth came back silent. Run it again." },
+        {
+          error: flagged
+            ? "The booth flagged this script's content. Hit Run It Back for a fresh script, then try audio again."
+            : "The booth came back silent. Run it again.",
+        },
         { status: 502 }
       );
     }
