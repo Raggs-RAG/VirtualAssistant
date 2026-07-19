@@ -59,7 +59,7 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState(null);
   const [audioBusy, setAudioBusy] = useState(false);
   const [audioError, setAudioError] = useState(null);
-  const [showTranscript, setShowTranscript] = useState(true);
+  const [showTranscript, setShowTranscript] = useState(false);
   const fileInput = useRef(null);
   const outputRef = useRef(null);
 
@@ -69,7 +69,7 @@ export default function Home() {
   useEffect(() => {
     setCopied(false);
     setAudioError(null);
-    setShowTranscript(true);
+    setShowTranscript(false);
     setAudioUrl((old) => {
       if (old) URL.revokeObjectURL(old);
       return null;
