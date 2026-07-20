@@ -30,6 +30,14 @@ export async function POST(req) {
 
   const source = sourceText.slice(0, MAX_SOURCE_CHARS);
 
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("generate failed: GEMINI_API_KEY is not set in this environment");
+    return Response.json(
+      { error: "The studio isn't wired up: GEMINI_API_KEY is missing in this deployment's environment." },
+      { status: 500 }
+    );
+  }
+
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
