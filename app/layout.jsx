@@ -1,12 +1,12 @@
-import { Archivo_Black, Space_Grotesk } from "next/font/google";
+import { Playfair_Display, Inter_Tight } from "next/font/google";
 import "./globals.css";
 
-const display = Archivo_Black({
-  weight: "400",
+const display = Playfair_Display({
+  weight: ["800", "900"],
   subsets: ["latin"],
   variable: "--font-display",
 });
-const body = Space_Grotesk({ subsets: ["latin"], variable: "--font-body" });
+const body = Inter_Tight({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata = {
   title: "CultureLM — Run the news through the culture",
