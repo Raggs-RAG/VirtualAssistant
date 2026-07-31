@@ -1,8 +1,12 @@
-import { Anton, Manrope } from "next/font/google";
+import { Archivo_Black, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const anton = Anton({ weight: "400", subsets: ["latin"], variable: "--font-display" });
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-body" });
+const display = Archivo_Black({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
+});
+const body = Space_Grotesk({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata = {
   title: "CultureLM — Run the news through the culture",
@@ -14,7 +18,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${anton.variable} ${manrope.variable}`}>{children}</body>
+      <body className={`${display.variable} ${body.variable}`}>{children}</body>
     </html>
   );
 }
