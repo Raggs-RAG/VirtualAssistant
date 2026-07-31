@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ARCHETYPES, PUBLIC_CASTS, REAL_CASTS } from "../lib/personas";
 import { extractText, ACCEPT, TYPE_LABEL } from "../lib/extract";
+import { Seal, Wordmark } from "./Logo";
 
 const REAL_MODE_KEY = "culturelm.realModeAccepted";
 
@@ -170,7 +171,8 @@ export default function Home() {
   return (
     <main className="wrap">
       <header className="brand">
-        <div className="display brand-mark">CultureLM</div>
+        <Seal size={52} />
+        <Wordmark />
         <div className="brand-beta">beta</div>
       </header>
 
@@ -241,23 +243,25 @@ export default function Home() {
           Real Cast — Beta
         </button>
       </div>
-      <div className="grid">
-        {ARCHETYPES.map((a) => {
-          const cast = casts[a.id];
-          return (
-            <button
-              key={a.id}
-              className={`card ${archetypeId === a.id ? "active" : ""}`}
-              onClick={() => setArchetypeId(a.id)}
-            >
-              <div className="display show">{cast.name}</div>
-              <div className="cast">
-                {cast.hosts.map((h) => h.name).join(" · ")}
-              </div>
-              <div className="tag">{cast.tagline}</div>
-            </button>
-          );
-        })}
+      <div className="carousel-frame">
+        <div className="carousel">
+          {ARCHETYPES.map((a) => {
+            const cast = casts[a.id];
+            return (
+              <button
+                key={a.id}
+                className={`card ${archetypeId === a.id ? "active" : ""}`}
+                onClick={() => setArchetypeId(a.id)}
+              >
+                <div className="display show">{cast.name}</div>
+                <div className="cast">
+                  {cast.hosts.map((h) => h.name).join(" · ")}
+                </div>
+                <div className="tag">{cast.tagline}</div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <button className="run" disabled={!ready} onClick={generate}>
