@@ -1,11 +1,32 @@
 import { GoogleGenAI } from "@google/genai";
 import { getCast } from "../../../lib/personas";
-import { buildTtsScript, pcmToWav } from "../../../lib/audio";
+import { buildChunks, pcmToWav } from "../../../lib/audio";
 
 export const maxDuration = 300;
 
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
 const MAX_SCRIPT_CHARS = 9000;
+
+const STYLE_PROMPT =
+  "TTS the following podcast conversation. Deliver it with real energy — " +
+  "animated, conversational, hosts talking like they're in the room " +
+  "together, not reading:\n\n";
+
+function speechConfigFor(speakers) {
+  if (speakers.length === 1) {
+    return {
+      voiceConfig: { prebuiltVoiceConfig: { voiceName: speakers[0].voice } },
+    };
+  }
+  return {
+    multiSpeakerVoiceConfig: {
+      speakerVoiceConfigs: speakers.map((s) => ({
+        speaker: s.name,
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } },
+      })),
+    },
+  };
+}
 
 export async function POST(req) {
   let body;
@@ -23,68 +44,60 @@ export async function POST(req) {
     return Response.json({ error: "Need a script and a show." }, { status: 400 });
   }
 
-  const { transcript, speakers } = buildTtsScript(
-    script.slice(0, MAX_SCRIPT_CHARS),
-    cast,
-    archetypeId
-  );
+  const chunks = buildChunks(script.slice(0, MAX_SCRIPT_CHARS), cast, archetypeId);
+  if (!chunks.length) {
+    return Response.json({ error: "Nothing to record." }, { status: 400 });
+  }
 
-  try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const synthesize = async () => {
-      const response = await ai.models.generateContent({
-        model: TTS_MODEL,
-        contents: `TTS the following podcast conversation. Deliver it with real energy — animated, conversational, hosts talking like they're in the room together, not reading:\n\n${transcript}`,
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            multiSpeakerVoiceConfig: {
-              speakerVoiceConfigs: speakers.map((s) => ({
-                speaker: s.name,
-                voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } },
-              })),
-            },
-          },
-        },
-      });
-      const cand = response.candidates?.[0];
-      const b64 = cand?.content?.parts?.find((p) => p.inlineData)?.inlineData
-        ?.data;
-      if (!b64) {
-        console.error(
-          "tts empty:",
-          JSON.stringify({
-            finishReason: cand?.finishReason,
-            promptFeedback: response.promptFeedback,
-            parts: (cand?.content?.parts || []).map((p) =>
-              p.inlineData ? "audio" : String(p.text || "").slice(0, 120)
-            ),
-          })
-        );
-      }
-      return { b64, finishReason: cand?.finishReason };
-    };
-
-    let { b64, finishReason } = await synthesize();
-    if (!b64 && !/SAFETY|PROHIBITED/i.test(String(finishReason))) {
-      ({ b64, finishReason } = await synthesize());
-    }
+  const synthesize = async (chunk) => {
+    const response = await ai.models.generateContent({
+      model: TTS_MODEL,
+      contents: STYLE_PROMPT + chunk.transcript,
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: speechConfigFor(chunk.speakers),
+      },
+    });
+    const cand = response.candidates?.[0];
+    const b64 = cand?.content?.parts?.find((p) => p.inlineData)?.inlineData?.data;
     if (!b64) {
-      const flagged = /SAFETY|PROHIBITED/i.test(String(finishReason));
-      return Response.json(
-        {
-          error: flagged
-            ? "The booth flagged this script's content. Hit Run It Back for a fresh script, then try audio again."
-            : "The booth came back silent. Run it again.",
-        },
-        { status: 502 }
+      console.error(
+        "tts empty:",
+        JSON.stringify({
+          finishReason: cand?.finishReason,
+          promptFeedback: response.promptFeedback,
+          speakers: chunk.speakers,
+        })
       );
     }
+    return { b64, finishReason: cand?.finishReason };
+  };
 
-    const wav = pcmToWav(Buffer.from(b64, "base64"));
+  try {
+    const parts = [];
+    for (const chunk of chunks) {
+      let { b64, finishReason } = await synthesize(chunk);
+      if (!b64 && !/SAFETY|PROHIBITED/i.test(String(finishReason))) {
+        ({ b64, finishReason } = await synthesize(chunk));
+      }
+      if (!b64) {
+        const flagged = /SAFETY|PROHIBITED/i.test(String(finishReason));
+        return Response.json(
+          {
+            error: flagged
+              ? "The booth flagged this script's content. Hit Run It Back for a fresh script, then try audio again."
+              : "The booth came back silent. Run it again.",
+          },
+          { status: 502 }
+        );
+      }
+      parts.push(Buffer.from(b64, "base64"));
+    }
 
-    // Stream the WAV out in chunks to stay clear of buffered-response limits.
+    const wav = pcmToWav(Buffer.concat(parts));
+
     const CHUNK = 256 * 1024;
     const stream = new ReadableStream({
       start(controller) {
@@ -108,7 +121,7 @@ export async function POST(req) {
     return Response.json(
       {
         error: quota
-          ? "Audio quota is tapped for now — try again in a minute (free tier is limited)."
+          ? "Audio quota is tapped — full-cast episodes use several voice calls. Check billing on your Google AI account or try again shortly."
           : "Audio generation broke. Try again — the producer is on it.",
       },
       { status: 502 }
