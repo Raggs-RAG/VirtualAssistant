@@ -69,7 +69,7 @@ export default function Home() {
   useEffect(() => {
     setCopied(false);
     setAudioError(null);
-    setShowTranscript(true);
+    setShowTranscript(false);
     setAudioUrl((old) => {
       if (old) URL.revokeObjectURL(old);
       return null;
@@ -121,6 +121,8 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "failed");
       setResult(data);
       setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
+      // Audio is the product — kick it off automatically, script stays backstage.
+      generateAudio(data.script);
     } catch (e) {
       setError(
         e.message === "failed"
@@ -138,15 +140,15 @@ export default function Home() {
     setCopied(true);
   };
 
-  const generateAudio = async () => {
-    if (!result || audioBusy) return;
+  const generateAudio = async (script) => {
+    if (!script || audioBusy) return;
     setAudioBusy(true);
     setAudioError(null);
     try {
       const res = await fetch("/api/audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: result.script, archetypeId, mode }),
+        body: JSON.stringify({ script, archetypeId, mode }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -284,11 +286,21 @@ export default function Home() {
               <button className="ghost-btn" onClick={generate}>
                 Run it back
               </button>
-              <button className="ghost-btn" onClick={generateAudio} disabled={audioBusy}>
-                {audioBusy ? "In the booth..." : "🎧 Episode Audio"}
+              <button
+                className="ghost-btn"
+                onClick={() => generateAudio(result.script)}
+                disabled={audioBusy}
+              >
+                {audioBusy ? "In the booth..." : audioUrl ? "🎧 Re-record" : "🎧 Episode Audio"}
               </button>
             </div>
           </div>
+          {audioBusy && !audioUrl && (
+            <div className="booth-status">
+              <span className="booth-dot" /> In the booth — your episode is
+              recording. Give it a minute.
+            </div>
+          )}
           {audioError && <div className="error">{audioError}</div>}
           {audioUrl && (
             <div className="audio-bar">
