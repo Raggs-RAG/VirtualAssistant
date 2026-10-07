@@ -1,12 +1,16 @@
-import { Playfair_Display, Inter_Tight } from "next/font/google";
+import { Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const display = Playfair_Display({
-  weight: ["800", "900"],
+const display = Sora({
+  weight: ["400", "600", "700", "800"],
   subsets: ["latin"],
   variable: "--font-display",
 });
-const body = Inter_Tight({ subsets: ["latin"], variable: "--font-body" });
+const body = JetBrains_Mono({
+  weight: ["500", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata = {
   title: "CultureLM — Run the news through the culture",
@@ -17,8 +21,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${display.variable} ${body.variable}`}>{children}</body>
+    <html lang="en" className={`${display.variable} ${body.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }
