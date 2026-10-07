@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ARCHETYPES, PUBLIC_CASTS, REAL_CASTS } from "../lib/personas";
 import { extractText, ACCEPT, TYPE_LABEL } from "../lib/extract";
 import { Seal, Wordmark } from "./Logo";
+import PortalHero from "./PortalHero";
 
 const REAL_MODE_KEY = "culturelm.realModeAccepted";
 
@@ -184,9 +185,10 @@ export default function Home() {
           Upload any document. Pick your show. Get the breakdown the way your
           group chat would explain it.
         </p>
+        <PortalHero active={busy || audioBusy} />
       </section>
 
-      <div className="section-label">1 — Drop your source</div>
+      <div className="section-label">01 / Drop your source</div>
       <div
         className={`dropzone ${drag ? "drag" : ""} ${fileName ? "loaded" : ""}`}
         onClick={() => fileInput.current?.click()}
@@ -228,7 +230,7 @@ export default function Home() {
         }}
       />
 
-      <div className="section-label">2 — Pick your show</div>
+      <div className="section-label">02 / Pick your show</div>
       <div className="mode-row">
         <button
           className={`mode-btn ${mode === "public" ? "active" : ""}`}
