@@ -1,15 +1,15 @@
-import { Sora, JetBrains_Mono } from "next/font/google";
+import { Unbounded, Outfit } from "next/font/google";
 import "./globals.css";
 
-const display = Sora({
-  weight: ["400", "600", "700", "800"],
+const display = Unbounded({
+  weight: ["500", "700", "800"],
   subsets: ["latin"],
   variable: "--font-display",
 });
-const body = JetBrains_Mono({
-  weight: ["500", "700"],
+const body = Outfit({
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-body",
 });
 
 export const metadata = {
